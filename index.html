@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>2025参議院選比例得票率</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* HTMLとBody要素をビューポートいっぱいに広げる */
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #ffffff;
+        }
+
+        /* コンテナ（サイドバーと地図を横並びにする） */
+        .container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            gap: 15px;
+            padding: 15px;
+            /* PCレイアウトの全体余白 */
+            box-sizing: border-box;
+            align-items: stretch;
+            position: relative;
+            /* 情報ボタンの基準にするため追加 */
+        }
+
+        /* サイドバーのスタイル */
+        .sidebar {
+            width: 300px;
+            background-color: #cc0000;
+            padding: 30px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            /* サイドバー全体でのスクロールは維持 */
+            position: relative;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* スクロールバーのスタイル（WebKitブラウザ向け） */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #FFFFFF00;
+            border-radius: 15px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 15px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* ドラッグハンドルのスタイル (非表示にする) */
+        .sidebar-resizer {
+            display: none;
+        }
+
+        /* 地図が表示されるdiv要素 */
+        #map {
+            flex-grow: 1;
+            height: 100%;
+            width: auto;
+            border-radius: 15px;
+            /* PCレイアウトの地図の角を丸く */
+            overflow: hidden;
+        }
+
+        /* サイドバー内の各セクションのスタイル */
+        .sidebar h1 {
+            font-size: 2em;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 5px;
+            /* タイトルと詳細情報の間のマージンを詰める */
+            text-align: left;
+            color: #ffffff;
+            line-height: 1.3;
+            display: block;
+        }
+
+        /* Info button style - 地図の右上に配置 */
+        .info-button {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: none;
+            border: none;
+            border-radius: 0;
+            width: 30px;
+            height: 30px;
+            font-family: 'Material Icons';
+            font-size: 20px;
+            color: #000000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none;
+            transition: color 0.3s ease, transform 0.2s ease;
+            z-index: 600;
+        }
+
+        .info-button:hover {
+            color: #333;
+            transform: scale(1.02);
+        }
+
+        .legend {
+            margin-bottom: 30px;
+        }
+
+        .legend h2,
+        .details h2 {
+            font-size: 1.4em;
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 5px;
+            /* 詳細情報のタイトル下マージンを詰める */
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+            /* 詳細情報のタイトル下パディングを詰める */
+            color: #e0e0e0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #000000;
+            padding: 5px 0;
+            transition: background-color 0.2s ease;
+            border-radius: 15px;
+            cursor: pointer;
+            /* クリック可能であることを示す */
+        }
+
+        /* 選択された凡例項目のスタイル */
+        .legend-item.selected {
+            background-color: #e9e9e9;
+            font-weight: 600;
+            color: #990000;
+        }
+
+        /* カラーシンボルの角を丸くする */
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            margin-right: 15px;
+            flex-shrink: 0;
+            border-radius: 1px;
+            /* ここを変更 */
+        }
+
+        /* 透明度凡例用のスタイル */
+        .legend-opacity-jimin {
+            background-color: #0000ff;
+        }
+
+        /* 自由民主党 */
+        .legend-opacity-kokumin {
+            background-color: #bf9000;
+        }
+
+        /* 国民民主党 */
+        .legend-opacity-sansei {
+            background-color: #ff9900;
+        }
+
+        /* 参政党 */
+        .legend-opacity-rikken {
+            background-color: #ff0000;
+        }
+
+        /* 立憲民主党 */
+        .legend-opacity-komei {
+            background-color: #9900ff;
+        }
+
+        /* 公明党 */
+        .legend-opacity-ishin {
+            background-color: #38761d;
+        }
+
+        /* 日本維新の会 */
+        .legend-opacity-reiwashinsengumi {
+            background-color: #ff00ff;
+        }
+
+        /* れいわ新選組 */
+        .legend-opacity-nichiho {
+            background-color: #0b5394;
+        }
+
+        /* 日本保守党 */
+        /* 日本共産党の凡例シンボルに太い黒い枠線を追加 (内側にはみ出す) */
+        .legend-opacity-communist {
+            background-color: #cc0000;
+            border: 4.5px solid #000000;
+            /* より太い黒い枠線 */
+        }
+
+        .legend-opacity-teammirai {
+            background-color: #134f5c;
+        }
+
+        /* チームみらい */
+        .legend-opacity-shamin {
+            background-color: #980000;
+        }
+
+        /* 社会民主党 */
+        .legend-opacity-nhk {
+            background-color: #45818e;
+        }
+
+        /* NHK党 */
+        .legend-opacity-saisei {
+            background-color: #8e7cc3;
+        }
+
+        /* 再生の道 */
+        .legend-opacity-seishin {
+            background-color: #e67c73;
+        }
+
+        /* 日本誠真会 */
+        .legend-opacity-muren {
+            background-color: #57bb8a;
+        }
+
+        /* 無所属連合 */
+        .legend-opacity-nichikai {
+            background-color: #d5a6bd;
+        }
+
+        /* 日本改革党 */
+
+
+        /* 最多得票政党の凡例スタイル */
+        .legend-color-most-voted {
+            background: conic-gradient(#0000ff 0deg 180deg, #ff0000 180deg 300deg, #bf9000 300deg 360deg);
+        }
+
+        /* 得票数第2党の凡例スタイル */
+        .legend-color-second-place {
+            background: conic-gradient(#0000ff 0deg 180deg, #ff0000 180deg 300deg, #bf9000 300deg 360deg)
+        }
+
+        /* 野党第1党の凡例スタイル */
+        .legend-color-first-opposition {
+            background: conic-gradient(#ff0000 0deg 180deg, #bf9000 180deg 300deg, #cc0000 300deg 360deg);
+        }
+
+        .details {
+            margin-top: 15px;
+            /* 詳細情報セクション全体の上のマージンを詰める */
+            flex-grow: 1;
+            /* 詳細情報が利用可能なスペースを最大限使うようにする */
+            display: flex;
+            flex-direction: column;
+            /* flexboxを適用して子要素の配置を制御 */
+        }
+
+        .details h3 {
+            font-size: 1.2em;
+            font-weight: 500;
+            margin-top: 20px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+            color: #000000;
+        }
+
+        .details p {
+            font-size: 1.05em;
+            margin-bottom: 0px;
+            /* 各行間のマージンをさらに詰める */
+            line-height: 1;
+            /* 各行の行間をさらに詰める */
+            color: #000000;
+        }
+
+        /* 地図情報パネルのスタイル */
+        #info-panel {
+            background-color: #ffffff;
+            border-radius: 15px;
+            padding: 10px 15px;
+            /* パネル全体のパディングを詰める */
+            flex-grow: 1;
+            /* 親要素の残りの高さを埋めるようにする */
+            overflow-y: auto;
+            /* 必要に応じて自動でスクロールバーを表示 */
+        }
+
+        #info-panel h2 {
+            font-size: 1.3em;
+            margin-top: 0;
+            margin-bottom: 10px;
+            /* 自治体名の下の余白を詰める */
+            color: #000000;
+        }
+
+        #info-panel p {
+            font-size: 1.0em;
+            /* フォントサイズも少し小さくして行数を稼ぐ */
+            margin-top: 0;
+            margin-bottom: 10px;
+            /* 各行間のマージンをさらに詰める */
+            line-height: 1;
+            /* 行間をさらに詰める */
+            color: #000000;
+        }
+
+        /* 説明モーダル/パネルのスタイル */
+        .explanation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .explanation-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .explanation-panel {
+            background-color: #ffffff;
+            padding: 30px;
+            /* PCレイアウトのパディング */
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .explanation-overlay.active .explanation-panel {
+            transform: translateY(0);
+        }
+
+        .explanation-panel h2 {
+            font-size: 1.8em;
+            color: #cc0000;
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        .explanation-panel p {
+            font-size: 1.1em;
+            line-height: 1.7;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .explanation-panel ul {
+            list-style-type: disc;
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .explanation-panel li {
+            font-size: 1.05em;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            color: #444;
+        }
+
+        /* 新しい凡例コンテナのスタイル */
+        .explanation-panel .legend-in-explanation {
+            margin-top: 25px;
+            margin-bottom: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .explanation-panel .legend-in-explanation .legend-item {
+            font-size: 1em;
+            /* 説明パネル内の凡例は少し小さく */
+            margin-bottom: 8px;
+        }
+
+        /* 説明パネル内のカラーシンボルの角を丸くする */
+        .explanation-panel .legend-in-explanation .legend-color {
+            width: 24px;
+            height: 24px;
+            margin-right: 15px;
+            border-radius: 15px;
+            box-sizing: border-box;
+        }
+
+        /* 説明パネル内の日本共産党凡例シンボルに太い黒い枠線を追加 (内側にはみ出す) */
+        .explanation-panel .legend-in-explanation .legend-opacity-communist {
+            background-color: #cc0000;
+            border: 4.5px solid #000000;
+            box-sizing: border-box;
+        }
+
+        .explanation-panel .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 2em;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .explanation-panel .close-button:hover {
+            color: #333;
+        }
+
+        /* 新しく追加する区切り線 */
+        .explanation-panel .section-divider {
+            border-top: 1px solid #e0e0e0;
+            margin: 20px 0;
+        }
+
+        /* LeafletのSVG要素内にパターンを定義するためのCSSを追加 */
+        #map svg defs {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+
+        /* --- スマートフォン向けのスタイル (画面幅が768px以下の場合) --- */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                padding: 7.5px;
+                /* 修正: スマホの全体余白を半分に */
+                gap: 0;
+                height: 100%;
+                width: 100%;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            #map {
+                flex-grow: 1;
+                height: 100%;
+                /* border-radius: 12px; はPC版のスタイルが継承されるため、ここでの変更は不要 */
+                box-shadow: none;
+                /* スマホでは影をなくす（任意） */
+                overflow: hidden;
+            }
+
+            #info-panel {
+                display: none;
+            }
+
+            /* Info button on mobile */
+            .info-button {
+                top: 12.5px;
+                /* 修正: スマホでもPCと同様に情報ボタンを15pxの位置に */
+                right: 12.5px;
+                /* 修正: スマホでもPCと同様に情報ボタンを15pxの位置に */
+                width: 35px;
+                height: 35px;
+                /* Material Iconsに対応するためにfont-sizeを調整 */
+                font-size: 24px;
+                z-index: 600;
+            }
+
+            /* Leafletポップアップのスタイル調整 (変更箇所) */
+            .leaflet-popup-content-wrapper {
+                border-radius: 15px;
+                padding: 2px;
+                /* パディングをさらに減らす */
+                line-height: 1.1;
+                /* 行間をさらに詰める */
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                margin-left: 5px;
+                margin-right: 5px;
+            }
+
+            .leaflet-popup-content {
+                word-break: break-word;
+                /* テキストが画面幅を超えないように自動改行 */
+            }
+
+            .leaflet-popup-content h2 {
+                font-size: 1.2em;
+                margin-top: 0;
+                margin-bottom: 3px;
+                /* マージンをさらに減らす */
+                line-height: 1.1;
+                /* 行間をさらに詰める */
+                color: #000000;
+                border-bottom: 1px solid #e0e0e0;
+                /* 追加: 区切り線 */
+                padding-bottom: 3px;
+                /* 追加: 区切り線と文字の間のスペース */
+            }
+
+            .leaflet-popup-content p {
+                font-size: 1em;
+                /* 段落のフォントサイズをさらに小さく */
+                margin-top: 0;
+                /* 段落の上マージンを削除 */
+                margin-bottom: 5px;
+                /* 修正: 本文間隔をさらに広げる */
+                line-height: 1.2;
+                /* 行間を詰める */
+            }
+
+            .leaflet-popup-content hr {
+                border: none;
+                height: 0.8px;
+                background-color: #e0e0e0;
+                margin: 3px 0;
+                /* 余白をさらに削減 */
+            }
+
+
+            /* Leafletポップアップの閉じるボタンの位置調整 */
+            .leaflet-popup-close-button {
+                top: 5px !important;
+                /* ボタン位置を上へ */
+                right: 10px !important;
+                /* ボタン位置を右へ */
+                font-size: 1.5em;
+                /* ボタンのサイズを小さく */
+            }
+
+            /* 説明パネルのスマホ対応 */
+            .explanation-panel {
+                margin: auto;
+                align-self: center;
+                width: 75vw;
+                height: 75vh;
+                max-width: none;
+                max-height: none;
+                padding: 30px;
+                /* 修正: スマホでもPCと同様に30pxのパディングに */
+                box-sizing: border-box;
+            }
+
+            .explanation-panel h2 {
+                font-size: 1.5em;
+            }
+
+            .explanation-panel p,
+            .explanation-panel li {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <svg width="0" height="0" style="position:absolute; top:0; left:0;">
+        <defs>
+            <pattern id="stripe-pattern" patternUnits="userSpaceOnUse" width="10" height="10">
+                <rect x="0" y="0" width="5" height="10" fill="#0000ff" />
+                <rect x="5" y="0" width="5" height="10" fill="#9900ff" />
+            </pattern>
+        </defs>
+    </svg>
+
+    <div class="container">
+        <button id="infoButton" class="info-button" aria-label="地図の説明を表示">
+            <span class="material-icons">info</span>
+        </button>
+        <div class="sidebar" id="sidebar">
+            <h1>
+                2025参改議院選比例得票率
+            </h1>
+            <div class="details">
+                <h2>詳細情報</h2>
+                <div id="info-panel">地図をクリックするとここに情報が表示されます。</div>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+    <div id="explanationOverlay" class="explanation-overlay">
+        <div class="explanation-panel">
+            <button class="close-button" id="closeExplanationButton" aria-label="説明を閉じる">&times;</button>
+            <h2>地図の説明</h2>
+            <p>この地図は、2025年7月20日に行われた第27回参議院議員通常選挙の比例代表における全国の自治体ごとの得票率を示しています。</p>
+            <p>各自治体は、選択された政党の色で塗り分けられ、色の濃さはその政党の得票率に比例しています（高得票率ほど色が濃くなります）。なお、野党第1党を選択した場合、自由民主党と公明党を除いた政党の中で最も得票数の多い政党の色で塗り分けられます。
+            </p>
+            <div class="legend-in-explanation">
+                <h3>表示政党を選択</h3>
+                <div class="legend-item selected" data-party-name="最多得票政党">
+                    <div class="legend-color legend-color-most-voted"></div>
+                    最多得票政党
+                </div>
+                <div class="legend-item" data-party-name="得票数第2党">
+                    <div class="legend-color legend-color-second-place"></div>
+                    得票数第2党
+                </div>
+                <div class="legend-item" data-party-name="野党第1党">
+                    <div class="legend-color legend-color-first-opposition"></div>
+                    野党第1党
+                </div>
+                <div class="legend-item" data-party-name="自由民主党">
+                    <div class="legend-color legend-opacity-jimin"></div>
+                    自民: 自由民主党
+                </div>
+                <div class="legend-item" data-party-name="国民民主党">
+                    <div class="legend-color legend-opacity-kokumin"></div>
+                    国民: 国民民主党
+                </div>
+                <div class="legend-item" data-party-name="参政党">
+                    <div class="legend-color legend-opacity-sansei"></div>
+                    参政: 参政党
+                </div>
+                <div class="legend-item" data-party-name="立憲民主党">
+                    <div class="legend-color legend-opacity-rikken"></div>
+                    立憲: 立憲民主党
+                </div>
+                <div class="legend-item" data-party-name="公明党">
+                    <div class="legend-color legend-opacity-komei"></div>
+                    公明: 公明党
+                </div>
+                <div class="legend-item" data-party-name="日本維新の会">
+                    <div class="legend-color legend-opacity-ishin"></div>
+                    維新: 日本維新の会
+                </div>
+                <div class="legend-item" data-party-name="れいわ新選組">
+                    <div class="legend-color legend-opacity-reiwashinsengumi"></div>
+                    れいわ: れいわ新選組
+                </div>
+                <div class="legend-item" data-party-name="日本保守党">
+                    <div class="legend-color legend-opacity-nichiho"></div>
+                    保守: 日本保守党
+                </div>
+                <div class="legend-item" data-party-name="日本共産党">
+                    <div class="legend-color legend-opacity-communist"></div>
+                    共産: 日本共産党
+                </div>
+                <div class="legend-item" data-party-name="チームみらい">
+                    <div class="legend-color legend-opacity-teammirai"></div>
+                    みらい: チームみらい
+                </div>
+                <div class="legend-item" data-party-name="社会民主党">
+                    <div class="legend-color legend-opacity-shamin"></div>
+                    社民: 社会民主党
+                </div>
+                <div class="legend-item" data-party-name="NHK党">
+                    <div class="legend-color legend-opacity-nhk"></div>
+                    NHK: NHK党
+                </div>
+                <div class="legend-item" data-party-name="再生の道">
+                    <div class="legend-color legend-opacity-saisei"></div>
+                    再生: 再生の道
+                </div>
+                <div class="legend-item" data-party-name="日本誠真会">
+                    <div class="legend-color legend-opacity-seishin"></div>
+                    誠真: 日本誠真会
+                </div>
+                <div class="legend-item" data-party-name="無所属連合">
+                    <div class="legend-color legend-opacity-muren"></div>
+                    無連: 無所属連合
+                </div>
+                <div class="legend-item" data-party-name="日本改革党">
+                    <div class="legend-color legend-opacity-nichikai"></div>
+                    改革: 日本改革党
+                </div>
+            </div>
+            <div class="section-divider"></div>
+            <p><strong>データソース</strong>: 各選挙管理委員会が公開する開票結果のデータに基づいています。</p>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Leafletマップの初期化
+        var map = L.map('map', { zoomControl: false }).setView([38.0, 138.0], 5);
+        // ベースマップ（背景地図）の追加
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+
+        // --- GeoJSONデータの読み込みと表示 ---
+        var geojsonDataPath = '2025参改.json'; // ファイルパスを変更
+        var geojsonLayer;
+        // municipalityLayersをMap型で定義し、キーを行政区域コード、値をその市町村名を持つレイヤーの配列とする
+        const municipalityLayers = new Map();
+
+        // データのカラム名。GeoJSONファイルのプロパティ名に合わせてください。
+        const municipalityNameColumn = '2025参改_自治体名';
+        const districtCodeColumn = 'N03_007'; // 行政区域コード
+
+        // 各党の得票数と得票率のカラム名を定義し、カラーコードも追加
+        const partyAttributes = {
+            "自由民主党": { voteField: '2025参改_自由民主党(票)', valueField: '2025参改_自由民主党(率)', color: '#0000ff', alias: '自民' },
+            "立憲民主党": { voteField: '2025参改_立憲民主党(票)', valueField: '2025参改_立憲民主党(率)', color: '#ff0000', alias: '立憲' },
+            "日本維新の会": { voteField: '2025参改_日本維新の会(票)', valueField: '2025参改_日本維新の会(率)', color: '#38761d', alias: '維新' },
+            "公明党": { voteField: '2025参改_公明党(票)', valueField: '2025参改_公明党(率)', color: '#9900ff', alias: '公明' },
+            "国民民主党": { voteField: '2025参改_国民民主党(票)', valueField: '2025参改_国民民主党(率)', color: '#bf9000', alias: '国民' },
+            "日本共産党": { voteField: '2025参改_日本共産党(票)', valueField: '2025参改_日本共産党(率)', color: '#cc0000', alias: '共産' },
+            "社会民主党": { voteField: '2025参改_社会民主党(票)', valueField: '2025参改_社会民主党(率)', color: '#980000', alias: '社民' },
+            "チームみらい": { voteField: '2025参改_チームみらい(票)', valueField: '2025参改_チームみらい(率)', color: '#134f5c', alias: 'みらい' },
+            "再生の道": { voteField: '2025参改_再生の道(票)', valueField: '2025参改_再生の道(率)', color: '#8e7cc3', alias: '再生' },
+            "日本改革党": { voteField: '2025参改_日本改革党(票)', valueField: '2025参改_日本改革党(率)', color: '#d5a6bd', alias: '改革' },
+            "無所属連合": { voteField: '2025参改_無所属連合(票)', valueField: '2025参改_無所属連合(率)', color: '#57bb8a', alias: '無連' },
+            "日本保守党": { voteField: '2025参改_日本保守党(票)', valueField: '2025参改_日本保守党(率)', color: '#0b5394', alias: '保守' },
+            "れいわ新選組": { voteField: '2025参改_れいわ新選組(票)', valueField: '2025参改_れいわ新選組(率)', color: '#ff00ff', alias: 'れいわ' },
+            "NHK党": { voteField: '2025参改_NHK党(票)', valueField: '2025参改_NHK党(率)', color: '#45818e', alias: 'NHK' },
+            "参政党": { voteField: '2025参改_参政党(票)', valueField: '2025参改_参政党(率)', color: '#ff9900', alias: '参政' },
+            "日本誠真会": { voteField: '2025参改_日本誠真会(票)', valueField: '2025参改_日本誠真会(率)', color: '#e67c73', alias: '誠真' }
+        };
+
+        let currentViewMode = '最多得票政党'; // '最多得票政党' または選択された政党名
+        let highlightColor = '#990000'; // ハイライト用の色を固定
+
+        // 政党ごとの最大得票率を保持するオブジェクト
+        const maxPartyRates = {};
+
+        // 現在選択中の地物の行政区域コードを保持する変数
+        let currentSelectedAdministrativeCode = null;
+
+        fetch(geojsonDataPath)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('GeoJSONファイルの読み込みに失敗しました: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("GeoJSONデータが正常に読み込まれました:", data);
+
+                // 各政党の最大得票率を事前に計算
+                for (const partyName in partyAttributes) {
+                    let maxRate = 0;
+                    data.features.forEach(feature => {
+                        const rate = parseFloat(feature.properties[partyAttributes[partyName].valueField]);
+                        if (!isNaN(rate) && rate > maxRate) {
+                            maxRate = rate;
+                        }
+                    });
+                    // 最多得票政党などは固定の50%を最大値として扱うため、個別政党選択時のみ計算値を使用
+                    maxPartyRates[partyName] = maxRate;
+                }
+                console.log("Max party rates:", maxPartyRates);
+
+                // 透明度を計算する関数
+                function getOpacity(rate, maxRateForParty, isSpecialMode) {
+                    if (rate === null || isNaN(rate)) {
+                        return 0;
+                    }
+                    if (isSpecialMode) {
+                        // 特殊なモード（最多得票、第2党、野党第1党）の場合は、50%を基準に透明度を調整
+                        return Math.max(0, Math.min(1, rate / 50));
+                    }
+                    // その他のモード（個別政党）
+                    // 選択された党の最大得票率を100%として透過度を線形に調整
+                    return Math.max(0, Math.min(1, rate / maxRateForParty));
+                }
+
+                function createStripePattern(colors, patternId) {
+                    let defs = document.querySelector('#map svg defs');
+
+                    // defs が無ければ作る（Leaflet初期化直後は無いことがある）
+                    if (!defs) {
+                        const svg = document.querySelector('#map svg');
+                        defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                        svg.insertBefore(defs, svg.firstChild);
+                    }
+
+                    // 既存パターン削除
+                    const old = document.getElementById(patternId);
+                    if (old) old.remove();
+
+                    const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
+                    pattern.setAttribute('id', patternId);
+                    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+                    pattern.setAttribute('width', 10);
+                    pattern.setAttribute('height', 10);
+
+                    const stripeWidth = 10 / colors.length;
+
+                    colors.forEach((color, i) => {
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', stripeWidth * i);
+                        rect.setAttribute('y', 0);
+                        rect.setAttribute('width', stripeWidth);
+                        rect.setAttribute('height', 10);
+                        rect.setAttribute('fill', color);
+                        pattern.appendChild(rect);
+                    });
+
+                    defs.appendChild(pattern);
+                }
+
+
+                // 各党のスタイルを生成する汎用関数
+                function getPartyStyle(color, rate, maxRateForParty, partyName) {
+                    const isSpecialMode = (currentViewMode === '最多得票政党' || currentViewMode === '得票数第2党' || currentViewMode === '野党第1党');
+
+                    // 日本共産党の場合の枠線と破線設定を個別に指定
+                    if (partyName === "日本共産党") {
+                        return {
+                            fillColor: color,
+                            fillOpacity: getOpacity(rate, maxRateForParty, isSpecialMode),
+                            weight: 1,
+                            opacity: 1,
+                            color: 'black', // 日本共産党の枠線を黒に設定
+                            dashArray: '' // 実線にする
+                        };
+                    }
+                    // その他の政党のスタイル
+                    return {
+                        fillColor: color,
+                        fillOpacity: getOpacity(rate, maxRateForParty, isSpecialMode),
+                        weight: 1,
+                        opacity: 1,
+                        color: 'white',
+                        dashArray: '3'
+                    };
+                }
+
+
+                // 地図のポリゴンスタイルを決定する関数
+                function style(feature) {
+                    const properties = feature.properties;
+                    if (!properties) {
+                        return {
+                            fillColor: '#ccc',
+                            fillOpacity: 0.0,
+                            weight: 0,
+                            opacity: 0,
+                            color: 'white'
+                        };
+                    }
+
+                    // 全ての政党の得票数と得票率を収集
+                    let partyData = [];
+                    for (const partyName in partyAttributes) {
+                        const attributes = partyAttributes[partyName];
+                        const vote = parseFloat(properties[attributes.voteField]);
+                        const rate = parseFloat(properties[attributes.valueField]);
+
+                        if (!isNaN(vote) && !isNaN(rate)) {
+                            partyData.push({
+                                name: partyName,
+                                vote: vote,
+                                rate: rate,
+                                color: attributes.color
+                            });
+                        }
+                    }
+
+                    // 得票数が多い順にソート
+                    partyData.sort((a, b) => b.vote - a.vote);
+
+                    if (currentViewMode === '最多得票政党') {
+                        if (partyData.length === 0) return null;
+
+                        const maxVote = partyData[0].vote;
+
+                        // 最多得票が同数の政党を全取得
+                        const topParties = partyData.filter(p => p.vote === maxVote);
+
+                        // 単独最多 → 従来通り
+                        if (topParties.length === 1) {
+                            const p = topParties[0];
+                            return getPartyStyle(p.color, p.rate, 50, p.name);
+                        }
+
+                        // 同数最多 → ストライプ
+                        const patternId = `stripe-${topParties.map(p => p.name).join('-')}`;
+                        createStripePattern(
+                            topParties.map(p => p.color),
+                            patternId
+                        );
+
+                        return {
+                            fillColor: `url(#${patternId})`,
+                            fillOpacity: getOpacity(topParties[0].rate, 50, true),
+                            weight: 1,
+                            opacity: 1,
+                            color: 'white',
+                            dashArray: '3'
+                        };
+                    }
+
+                    else if (currentViewMode === '得票数第2党') {
+                        const secondParty = partyData.length > 1 ? partyData[1] : null;
+
+                        if (secondParty) {
+                            return getPartyStyle(secondParty.color, secondParty.rate, 50, secondParty.name);
+                        }
+                    } else if (currentViewMode === '野党第1党') {
+                        const rulingParties = ['自由民主党', '公明党', '日本のこころ'];
+                        const firstOppositionParty = partyData.filter(p => !rulingParties.includes(p.name)).sort((a, b) => b.vote - a.vote)[0];
+
+                        if (firstOppositionParty) {
+                            return getPartyStyle(firstOppositionParty.color, firstOppositionParty.rate, 50, firstOppositionParty.name);
+                        }
+                    } else { // 特定の政党が選択された場合
+                        const selectedPartyAttr = partyAttributes[currentViewMode];
+                        if (selectedPartyAttr) {
+                            const rate = parseFloat(properties[selectedPartyAttr.valueField]);
+                            const maxRate = maxPartyRates[currentViewMode];
+                            return getPartyStyle(selectedPartyAttr.color, rate, maxRate, currentViewMode);
+                        }
+                    }
+
+                    // どの党も1位でない場合、またはデータがない場合のデフォルトスタイル
+                    return {
+                        fillColor: '#ccc',
+                        fillOpacity: 0.0, // データがない場合は透明に
+                        weight: 0,
+                        opacity: 0,
+                        color: 'white'
+                    };
+                }
+
+                // フィーチャがクリックされた時の処理
+                function clickFeature(e) {
+                    const layer = e.target;
+                    const administrativeCode = layer.feature.properties[districtCodeColumn];
+
+                    // 既に選択されている地物と同じ地物がクリックされた場合は、選択を解除
+                    if (currentSelectedAdministrativeCode === administrativeCode) {
+                        // 全てのハイライトを解除
+                        if (currentSelectedAdministrativeCode && municipalityLayers.has(currentSelectedAdministrativeCode)) {
+                            municipalityLayers.get(currentSelectedAdministrativeCode).forEach(muniLayer => {
+                                geojsonLayer.resetStyle(muniLayer);
+                            });
+                        }
+                        currentSelectedAdministrativeCode = null;
+                        document.getElementById('info-panel').innerHTML = '地図をクリックするとここに情報が表示されます。';
+                        return;
+                    }
+
+                    // 以前に選択された地物があれば、そのハイライトを解除
+                    if (currentSelectedAdministrativeCode && municipalityLayers.has(currentSelectedAdministrativeCode)) {
+                        municipalityLayers.get(currentSelectedAdministrativeCode).forEach(muniLayer => {
+                            geojsonLayer.resetStyle(muniLayer);
+                        });
+                    }
+
+                    // 新しい地物をハイライト
+                    if (administrativeCode && municipalityLayers.has(administrativeCode)) {
+                        municipalityLayers.get(administrativeCode).forEach(muniLayer => {
+                            muniLayer.setStyle({
+                                weight: 3,
+                                color: highlightColor,
+                                dashArray: '',
+                            });
+                            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                                muniLayer.bringToFront();
+                            }
+                        });
+                        currentSelectedAdministrativeCode = administrativeCode; // 新しい選択地物を設定
+                    }
+
+                    // 詳細情報パネルの更新
+                    var feature = e.target.feature;
+                    var properties = feature.properties;
+                    let infoContent = '';
+
+                    if (properties) {
+                        infoContent += `<h2>${properties[municipalityNameColumn] || '自治体名なし'}</h2>`;
+
+                        let partyData = [];
+                        for (const partyName in partyAttributes) {
+                            const attributes = partyAttributes[partyName];
+                            const vote = parseFloat(properties[attributes.voteField]);
+                            const rate = parseFloat(properties[attributes.valueField]);
+
+                            if (!isNaN(vote) && !isNaN(rate)) {
+                                partyData.push({
+                                    name: partyName,
+                                    alias: attributes.alias,
+                                    vote: vote,
+                                    rate: rate
+                                });
+                            }
+                        }
+
+                        // 得票数が多い順にソート (要件: 各政党(票)で終わるフィールドの値が高い順で並び替え)
+                        partyData.sort((a, b) => b.vote - a.vote);
+
+                        // ハイライトする政党（複数可）
+                        let partiesToHighlight = [];
+
+                        if (currentViewMode === '最多得票政党' && partyData.length > 0) {
+                            const maxVote = partyData[0].vote;
+                            partiesToHighlight = partyData.filter(p => p.vote === maxVote);
+
+                        } else if (currentViewMode === '得票数第2党' && partyData.length > 1) {
+                            partiesToHighlight = [partyData[1]];
+
+                        } else if (currentViewMode === '野党第1党') {
+                            const rulingParties = ['自由民主党', '公明党', '日本のこころ'];
+                            const firstOpposition = partyData.filter(p => !rulingParties.includes(p.name))[0];
+                            if (firstOpposition) partiesToHighlight = [firstOpposition];
+
+                        } else {
+                            const selected = partyData.find(p => p.name === currentViewMode);
+                            if (selected) partiesToHighlight = [selected];
+                        }
+
+
+
+                        if (partyData.length > 0) {
+                            partyData.forEach((party, index) => {
+                                const rank = index + 1; // 順位はソート後のインデックス+1
+                                // 選択された政党の行全体にスタイルを適用
+                                const isHighlighted = partiesToHighlight.some(p => p.name === party.name);
+
+                                if (isHighlighted) {
+                                    infoContent += `<p style="color: #990000;"><strong>${party.alias}</strong>: ${party.rate.toFixed(2)}% (${party.vote.toLocaleString()}票)</p>`;
+                                } else {
+                                    infoContent += `<p><strong>${party.alias}</strong>: ${party.rate.toFixed(2)}% (${party.vote.toLocaleString()}票)</p>`;
+                                }
+
+                            });
+                        } else {
+                            infoContent += `<p>該当する党のデータなし</p>`;
+                        }
+                    } else {
+                        infoContent = `<p>地物情報がありません。</p>`;
+                    }
+
+                    if (window.innerWidth <= 768) {
+                        L.popup()
+                            .setLatLng(e.latlng)
+                            .setContent(infoContent)
+                            .openOn(map);
+                    } else {
+                        var infoPanel = document.getElementById('info-panel');
+                        infoPanel.innerHTML = infoContent;
+                    }
+                }
+
+                function onEachFeature(feature, layer) {
+                    // 修正: 行政区域コードを取得してマップに追加
+                    const administrativeCode = feature.properties[districtCodeColumn];
+                    if (administrativeCode) {
+                        if (!municipalityLayers.has(administrativeCode)) {
+                            municipalityLayers.set(administrativeCode, []);
+                        }
+                        municipalityLayers.get(administrativeCode).push(layer);
+                    }
+                    layer.on({
+                        click: clickFeature // クリックイベントのみを設定
+                    });
+                }
+
+                // 地図全体がクリックされた時のイベントリスナーを追加
+                map.on('click', function (e) {
+                    // クリックされたのがGeoJSONレイヤー上の地物でなければ、ハイライトを解除
+                    if (!e.originalEvent.target.classList.contains('leaflet-interactive')) {
+                        if (currentSelectedAdministrativeCode && municipalityLayers.has(currentSelectedAdministrativeCode)) {
+                            municipalityLayers.get(currentSelectedAdministrativeCode).forEach(muniLayer => {
+                                geojsonLayer.resetStyle(muniLayer);
+                            });
+                        }
+                        currentSelectedAdministrativeCode = null;
+                        document.getElementById('info-panel').innerHTML = '地図をクリックするとここに情報が表示されます。';
+                    }
+                });
+
+
+                geojsonLayer = L.geoJSON(data, {
+                    style: style,
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+                var bounds = geojsonLayer.getBounds();
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds);
+                }
+
+                // 初期表示モードに基づいて地図を更新
+                updateMapStyle();
+            })
+            .catch(error => {
+                console.error('GeoJSONファイルの読み込みまたは処理中にエラーが発生しました:', error);
+            });
+
+        // 地図スタイルを更新する関数
+        function updateMapStyle() {
+            if (geojsonLayer) {
+                geojsonLayer.eachLayer(function (layer) {
+                    geojsonLayer.resetStyle(layer);
+                });
+            }
+            // 選択が解除された場合、情報パネルをリセット
+            if (!currentSelectedAdministrativeCode && window.innerWidth > 768) {
+                document.getElementById('info-panel').innerHTML = '地図をクリックするとここに情報が表示されます。';
+            }
+        }
+
+        // --- 説明モーダルのJavaScript制御 ---
+        const infoButton = document.getElementById('infoButton');
+        const explanationOverlay = document.getElementById('explanationOverlay');
+        const closeExplanationButton = document.getElementById('closeExplanationButton');
+        const legendItems = document.querySelectorAll('.legend-in-explanation .legend-item');
+
+        // 自動で説明ポップアップを開く
+        window.addEventListener('load', () => {
+            explanationOverlay.classList.add('active');
+        });
+
+        infoButton.addEventListener('click', () => {
+            explanationOverlay.classList.add('active');
+        });
+
+        closeExplanationButton.addEventListener('click', () => {
+            explanationOverlay.classList.remove('active');
+        });
+
+        // オーバーレイの背景をクリックで閉じる
+        explanationOverlay.addEventListener('click', (e) => {
+            if (e.target === explanationOverlay) {
+                explanationOverlay.classList.remove('active');
+            }
+        });
+
+        // ESCキーで閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && explanationOverlay.classList.contains('active')) {
+                explanationOverlay.classList.remove('active');
+            }
+        });
+
+        // 凡例クリックイベントリスナー
+        legendItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // すべての項目から 'selected' クラスを削除
+                legendItems.forEach(li => li.classList.remove('selected'));
+                // クリックされた項目に 'selected' クラスを追加
+                item.classList.add('selected');
+
+                currentViewMode = item.dataset.partyName;
+                // highlightColor は固定の #990000 のため、ここでの変更は不要
+                updateMapStyle(); // 地図のスタイルを更新
+                console.log("Current view mode set to:", currentViewMode);
+            });
+        });
+    </script>
+</body>
+
+</html>
