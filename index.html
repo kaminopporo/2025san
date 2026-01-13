@@ -179,7 +179,7 @@
 
         /* 自由民主党 */
         .legend-opacity-kokumin {
-            background-color: #bf9000;
+            background-color: #f1c232;
         }
 
         /* 国民民主党 */
@@ -199,7 +199,7 @@
 
         /* 公明党 */
         .legend-opacity-ishin {
-            background-color: #38761d;
+            background-color: #00ff00;
         }
 
         /* 日本維新の会 */
@@ -259,17 +259,17 @@
 
         /* 最多得票政党の凡例スタイル */
         .legend-color-most-voted {
-            background: conic-gradient(#0000ff 0deg 180deg, #ff0000 180deg 300deg, #bf9000 300deg 360deg);
+            background: conic-gradient(#0000ff 0deg 180deg, #ff0000 180deg 300deg, #ffff00 300deg 360deg);
         }
 
         /* 得票数第2党の凡例スタイル */
         .legend-color-second-place {
-            background: conic-gradient(#0000ff 0deg 180deg, #ff0000 180deg 300deg, #bf9000 300deg 360deg)
+            background: conic-gradient(#0000ff 0deg 180deg, #ff0000 180deg 300deg, #ffff00 300deg 360deg)
         }
 
         /* 野党第1党の凡例スタイル */
         .legend-color-first-opposition {
-            background: conic-gradient(#ff0000 0deg 180deg, #bf9000 180deg 300deg, #cc0000 300deg 360deg);
+            background: conic-gradient(#ff0000 0deg 120deg, #ffff00 120deg 240deg, #ff9900 240deg 360deg);
         }
 
         .details {
@@ -427,7 +427,13 @@
         /* 説明パネル内の日本共産党凡例シンボルに太い黒い枠線を追加 (内側にはみ出す) */
         .explanation-panel .legend-in-explanation .legend-opacity-communist {
             background-color: #cc0000;
-            border: 4.5px solid #000000;
+            border: 2px solid #000000;
+            box-sizing: border-box;
+        }
+
+        .explanation-panel .legend-in-explanation .legend-opacity-kokumin {
+            background-color: #ffff00;
+            border: 2px solid #000000;
             box-sizing: border-box;
         }
 
@@ -727,9 +733,9 @@
         const partyAttributes = {
             "自由民主党": { voteField: '2025参改_自由民主党(票)', valueField: '2025参改_自由民主党(率)', color: '#0000ff', alias: '自民' },
             "立憲民主党": { voteField: '2025参改_立憲民主党(票)', valueField: '2025参改_立憲民主党(率)', color: '#ff0000', alias: '立憲' },
-            "日本維新の会": { voteField: '2025参改_日本維新の会(票)', valueField: '2025参改_日本維新の会(率)', color: '#38761d', alias: '維新' },
+            "日本維新の会": { voteField: '2025参改_日本維新の会(票)', valueField: '2025参改_日本維新の会(率)', color: '#00ff00', alias: '維新' },
             "公明党": { voteField: '2025参改_公明党(票)', valueField: '2025参改_公明党(率)', color: '#9900ff', alias: '公明' },
-            "国民民主党": { voteField: '2025参改_国民民主党(票)', valueField: '2025参改_国民民主党(率)', color: '#bf9000', alias: '国民' },
+            "国民民主党": { voteField: '2025参改_国民民主党(票)', valueField: '2025参改_国民民主党(率)', color: '#ffff00', alias: '国民' },
             "日本共産党": { voteField: '2025参改_日本共産党(票)', valueField: '2025参改_日本共産党(率)', color: '#cc0000', alias: '共産' },
             "社会民主党": { voteField: '2025参改_社会民主党(票)', valueField: '2025参改_社会民主党(率)', color: '#980000', alias: '社民' },
             "チームみらい": { voteField: '2025参改_チームみらい(票)', valueField: '2025参改_チームみらい(率)', color: '#134f5c', alias: 'みらい' },
@@ -831,7 +837,7 @@
                     const isSpecialMode = (currentViewMode === '最多得票政党' || currentViewMode === '得票数第2党' || currentViewMode === '野党第1党');
 
                     // 日本共産党の場合の枠線と破線設定を個別に指定
-                    if (partyName === "日本共産党") {
+                    if (partyName === "日本共産党" || partyName === "国民民主党") {
                         return {
                             fillColor: color,
                             fillOpacity: getOpacity(rate, maxRateForParty, isSpecialMode),
